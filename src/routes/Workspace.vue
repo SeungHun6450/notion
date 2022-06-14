@@ -1,10 +1,23 @@
 <template>
+  <TheHeader />
   <h1>Workspace!</h1>
   <button @click="workspaceStore.createWorkspace">
     Workspace 생성
   </button>
   
   <section :key="$route.params.id">
+    <div class="poster">
+      <img
+        v-if="workspaceStore.workspace.poster"
+        :src="workspaceStore.workspace.poster"
+        alt="Poster" />
+      <input
+        type="file"
+        @change="selectPoster" />
+      <button @click="deletePoster">
+        삭제
+      </button>
+    </div>
     <h1
       ref="title"
       placeholder="제목 없음"
@@ -29,40 +42,61 @@
 <script>
 import { mapStores } from 'pinia'
 import { useWorkspaceStore } from '~/store/workspace'
+import TheHeader from '~/components/TheHeader.vue'
 
 export default {
+  components: {
+    TheHeader
+  },
   computed: {
-    ...mapStores(useWorkspaceStore)
+      ...mapStores(useWorkspaceStore)
   },
   watch: {
-    $route() {
-      this.workspaceStore.readWorkspaceDetail(this.$route.params.id)
-    }
+      $route() {
+          this.workspaceStore.readWorkspaceDetail(this.$route.params.id)
+      }
   },
   created() {
-    this.workspaceStore.readWorkspaceDetail(this.$route.params.id)
+      this.workspaceStore.readWorkspaceDetail(this.$route.params.id)
   },
   methods: {
-    onInput() {
-      // 안의 내용을 알아내는 방식
-      // const title = event.target.value
-      // contenteditable에서는 아래와 같이 사용할 수 있다.
-      const title = this.$refs.title.textContent
-      const content = this.$refs.content.innerHTML
-
-      if(!title.trim()) {
-        this.$refs.title.innerHTML= ''
+      onInput() {
+          // 안의 내용을 알아내는 방식
+          // const title = event.target.value
+          // contenteditable에서는 아래와 같이 사용할 수 있다.
+          const title = this.$refs.title.textContent
+          const content = this.$refs.content.innerHTML
+          if (!title.trim()) {
+              this.$refs.title.innerHTML = ''
+          }
+          if (!content.trim()) {
+              this.$refs.content.innerHTML = ''
+          }
+          this.workspaceStore.updateWorkspace({
+              id: this.$route.params.id,
+              title,
+              content
+          })
+      },
+      selectPoster(event) {
+          const { files } = event.target
+          for (const file of files) {
+              const reader = new FileReader()
+              reader.readAsDataURL(file)
+              reader.addEventListener('load', e => {
+                  this.workspaceStore.updateWorkspace({
+                      id: this.$route.params.id,
+                      poster: e.target.result
+                  })
+              })
+          }
+      },
+      deletePoster() {
+          this.workspaceStore.updateWorkspace({
+              id: this.$route.params.id,
+              poster: '-1'
+          })
       }
-      if(!content.trim()) {
-        this.$refs.content.innerHTML= ''
-      }
-
-      this.workspaceStore.updateWorkspace({
-        id: this.$route.params.id,
-        title,
-        content
-      })
-    }
   }
 }
 </script>

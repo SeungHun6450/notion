@@ -1,11 +1,13 @@
 import { defineStore } from 'pinia'
+import router  from '~/routes'
 
 // defineStore('', {})
 export const useWorkspaceStore = defineStore('workspace', {
   state() {
     return {
       workspace: {},
-      workspaces: []
+      workspaces: [],
+      currentWorkspacePath: []
     }
   },
   getters: {
@@ -13,81 +15,87 @@ export const useWorkspaceStore = defineStore('workspace', {
   },
   actions: {
     // CRUD
-    async createWorkspace() {
-      // fetch(url, options)
-      const res = await fetch('https://asia-northeast3-heropy-api.cloudfunctions.net/api/notion/workspaces', {
+    async createWorkspace(payload = {}) {
+      const { parentId } = payload
+      await request({
         method: 'POST',
-        headers: {
-          'content-type': 'application/json',
-          'apikey': 'FcKdtJs202204',
-          'username': 'ByeonSeungHun'
-        },
-        body: JSON.stringify({
-          // parentId: '',
-          title: '처음 만드는 Notion Workspace2',
-          content: '처음 만드는 내용',
-          // poster: ''
-        })
+        body: {
+          parentId,
+          title: ''
+        }
       })
-      const workspace = await res.json()
-      console.log(workspace)
       this.readWorkspaces()
     },
     async readWorkspaces() {
-      const res = await fetch('https://asia-northeast3-heropy-api.cloudfunctions.net/api/notion/workspaces', {
+      const workspaces = await request({
         method: 'GET',
-        headers: {
-          'content-type': 'application/json',
-          'apikey': 'FcKdtJs202204',
-          'username': 'ByeonSeungHun'
-        }
       })
-      const workspaces = await res.json()
-      console.log(workspaces) 
       
       this.workspaces = workspaces
     },
     async readWorkspaceDetail(id) {
-      const res = await fetch(`https://asia-northeast3-heropy-api.cloudfunctions.net/api/notion/workspaces/${id}`, {
+      const workspace = await request({
+        id,
         method: 'GET',
-        headers: {
-          'content-type': 'application/json',
-          'apikey': 'FcKdtJs202204',
-          'username': 'ByeonSeungHun'
-        }
       })
-      const workspace = await res.json()
-      console.log(workspace)
 
       this.workspace = workspace
     },
     async updateWorkspace(payload) {
-      const { id, title, content } = payload
-      await fetch(`https://asia-northeast3-heropy-api.cloudfunctions.net/api/notion/workspaces/${id}`, {
+      const { id, title, content, poster } = payload
+
+      const updatedWorkspace = await request({
+        id,
         method: 'PUT',
-        headers: {
-          'content-type': 'application/json',
-          'apikey': 'FcKdtJs202204',
-          'username': 'ByeonSeungHun'
-        },
-        body: JSON.stringify({
+        body: {
           title,
-          content
-        })
+          content,
+          poster
+        }
       })
-      
+
+      this.workspace = updatedWorkspace
       this.readWorkspaces()
     },
     async deleteWorkspace(id) {
-      await fetch(`https://asia-northeast3-heropy-api.cloudfunctions.net/api/notion/workspaces/${id}`, {
-        method: 'DELETE',
-        headers: {
-          'content-type': 'application/json',
-          'apikey': 'FcKdtJs202204',
-          'username': 'ByeonSeungHun'
-        }
+      await request({
+        id,
+        method: 'DELETE'
       })
       this.readWorkspaces()
+    },
+    findWorkspacePath() {
+      // $route를 아래와 같이 쓸 수 있음
+      const currentWorkspaceId = router.currentRoute.value.params.id
+      function find(workspace, parents) {
+        if (currentWorkspaceId === workspace.id) {
+          this.currentWorkspacePath = [...parents, workspace]
+        }
+        if (workspace.children) {
+          workspace.children.forEach(ws => {
+            find(ws, [...parents], workspace)
+          })
+        }
+      }
+      this.workspaces.forEach(workspace => {
+        find(workspace, [])
+      })
     }
   }
 })
+
+
+async function request(options) {
+  const { id='', method, body } = options
+  // fetch(url, options)
+  const res = await fetch(`https://asia-northeast3-heropy-api.cloudfunctions.net/api/notion/workspaces/${id}`, {
+    method,
+    headers: {
+      'content-type': 'application/json',
+      'apikey': 'FcKdtJs202204',
+      'username': 'ByeonSeungHun'
+    },
+    body: JSON.stringify(body)
+  })
+  return res.json()  
+}
