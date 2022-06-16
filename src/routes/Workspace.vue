@@ -15,7 +15,7 @@
         type="file"
         @change="selectPoster" />
       <button @click="deletePoster">
-        삭제
+        이미지 삭제
       </button>
     </div>
     <h1

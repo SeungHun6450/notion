@@ -1,5 +1,4 @@
 import { defineStore } from 'pinia'
-import router  from '~/routes'
 
 // defineStore('', {})
 export const useWorkspaceStore = defineStore('workspace', {
@@ -7,6 +6,7 @@ export const useWorkspaceStore = defineStore('workspace', {
     return {
       workspace: {},
       workspaces: [],
+      workspacesLoaded: false,
       currentWorkspacePath: []
     }
   },
@@ -17,7 +17,7 @@ export const useWorkspaceStore = defineStore('workspace', {
     // CRUD
     async createWorkspace(payload = {}) {
       const { parentId } = payload
-      await request({
+      const workspace = await request({
         method: 'POST',
         body: {
           parentId,
@@ -25,6 +25,7 @@ export const useWorkspaceStore = defineStore('workspace', {
         }
       })
       this.readWorkspaces()
+      window.location.href = `/workspaces/${workspace.id}`
     },
     async readWorkspaces() {
       const workspaces = await request({
@@ -32,6 +33,11 @@ export const useWorkspaceStore = defineStore('workspace', {
       })
       
       this.workspaces = workspaces
+      this.workspacesLoaded = true
+
+      if (!this.workspaces.length) {
+        this.createWorkspace()
+      }
     },
     async readWorkspaceDetail(id) {
       const workspace = await request({
@@ -64,16 +70,15 @@ export const useWorkspaceStore = defineStore('workspace', {
       })
       this.readWorkspaces()
     },
-    findWorkspacePath() {
+    findWorkspacePath(currentWorkspaceId) {
       // $route를 아래와 같이 쓸 수 있음
-      const currentWorkspaceId = router.currentRoute.value.params.id
-      function find(workspace, parents) {
+      const find = (workspace, parents) => {
         if (currentWorkspaceId === workspace.id) {
           this.currentWorkspacePath = [...parents, workspace]
         }
         if (workspace.children) {
           workspace.children.forEach(ws => {
-            find(ws, [...parents], workspace)
+            find(ws, [...parents, workspace])
           })
         }
       }
@@ -86,7 +91,7 @@ export const useWorkspaceStore = defineStore('workspace', {
 
 
 async function request(options) {
-  const { id='', method, body } = options
+  const { id = '', method, body } = options
   // fetch(url, options)
   const res = await fetch(`https://asia-northeast3-heropy-api.cloudfunctions.net/api/notion/workspaces/${id}`, {
     method,
